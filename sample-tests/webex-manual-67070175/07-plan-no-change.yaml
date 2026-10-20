@@ -1,0 +1,10 @@
+version: 1
+router: 10.0.29.103
+method: restconf
+action: plan
+desired:
+  interface:
+    name: Loopback67070175
+    ipv4: 172.31.175.1/32
+    description: IPA2026-67070175
+    admin_state: up
