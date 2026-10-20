@@ -43,6 +43,19 @@ test room. Router cases only touch `Loopback<student-id>`, refuse
 `10.0.29.101`, stop if that Loopback belongs to someone else, and always
 delete it again at the end.
 
+## Exam room
+
+```bash
+python scripts/exam_room.py preflight        # readiness checks, sends nothing
+python scripts/exam_room.py register --send  # then: verify, grade, score
+```
+
+Without `--send` each command is a dry run. `verify` and `grade` run the
+preflight first (bot in both rooms, active webhook, public `/health`, `main`
+pushed with green Student CI, `10.0.29.101` reachable over the VPN) and refuse
+to send when a check fails. `grade` uses one of the 10 grading attempts and
+keeps following the room until the final `Live: x/10` report.
+
 ## Router safety
 
 - Requests are processed one at a time; Webex re-deliveries are ignored.
