@@ -5,8 +5,10 @@ Messages are sent with the tester's own Personal Access Token
 (WEBEX_TESTER_TOKEN), as a real @mention of the bot plus one YAML file,
 exactly like a person would in the room.
 
-    python scripts/live_test.py                      # validation cases only
-    python scripts/live_test.py --router 10.0.29.103 # + full router sequence
+    python scripts/live_test.py           # validation cases only
+    python scripts/live_test.py --router  # + full router sequence
+
+STUDENT_ID, TEST_ROUTER, TEST_LOOPBACK_IPV4 and TEST_ROOM come from .env.
 
 Router cases only touch Loopback<student-id> and stop before any change if
 that interface exists with a description that is not ours.
@@ -14,30 +16,19 @@ that interface exists with a description that is not ours.
 
 import argparse
 import json
-import os
 import sys
 import time
 from pathlib import Path
 
 import requests
 
+from student_env import load_env, require, student_settings
+
 API = "https://webexapis.com/v1"
-ROOT = Path(__file__).resolve().parents[1]
 
 # Seconds Live grading waits for a reply.
 LIMIT_NO_ROUTER = 10
 LIMIT_ROUTER = 20
-
-
-def load_env():
-    env_file = ROOT / ".env"
-    if not env_file.exists():
-        return
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
 
 
 class Tester:
@@ -189,32 +180,25 @@ def run(tester, cases, limit):
 
 
 def main():
-    load_env()
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("--room", default="Testing Zone IPA2026-Y3-Final-Exam-project")
-    parser.add_argument("--student-id", default="67070175")
-    parser.add_argument("--router", help="run router cases on this router")
-    parser.add_argument("--ipv4", default="172.31.175.1/32",
-                        help="unused Loopback address on that router")
+    parser.add_argument("--router", action="store_true",
+                        help="also run the router sequence on TEST_ROUTER")
     args = parser.parse_args()
 
-    token = os.environ.get("WEBEX_TESTER_TOKEN")
-    if not token:
-        sys.exit("set WEBEX_TESTER_TOKEN in .env (your own Personal Access Token)")
+    student_id, router, ipv4 = student_settings()
+    token = require("WEBEX_TESTER_TOKEN")
+    room = require("TEST_ROOM")
 
-    name = f"Loopback{args.student_id}"
-    description = f"IPA2026-{args.student_id}"
-    tester = Tester(token, args.room, f"{args.student_id}@webex.bot")
+    name = f"Loopback{student_id}"
+    description = f"IPA2026-{student_id}"
+    tester = Tester(token, room, f"{student_id}@webex.bot")
 
     print("== validation cases (router not contacted)")
-    failures = run(tester, validation_cases(args.router or "10.0.29.103", name),
-                   LIMIT_NO_ROUTER)
+    failures = run(tester, validation_cases(router, name), LIMIT_NO_ROUTER)
 
     if args.router:
-        if args.router == "10.0.29.101":
-            sys.exit("10.0.29.101 is reserved for official grading")
-        print(f"== router cases on {args.router} / {name} / {args.ipv4}")
-        status_yaml = request_yaml(args.router, "restconf", "status", name)
+        print(f"== router cases on {router} / {name} / {ipv4}")
+        status_yaml = request_yaml(router, "restconf", "status", name)
         sent = tester.send(status_yaml)
         reply, _ = tester.wait_reply(sent, LIMIT_ROUTER)
         print(f"pre-check status: {json.dumps(reply)}")
@@ -224,15 +208,15 @@ def main():
             if reply["interface"].get("description") != description:
                 sys.exit(f"{name} exists but is not ours; stopping")
             print(f"removing our leftover {name} first")
-            tester.send(request_yaml(args.router, "netmiko-textfsm", "delete", name))
+            tester.send(request_yaml(router, "netmiko-textfsm", "delete", name))
             time.sleep(LIMIT_ROUTER)
         try:
-            failures += run(tester, router_cases(args.router, name, args.ipv4,
+            failures += run(tester, router_cases(router, name, ipv4,
                                                  description), LIMIT_ROUTER)
         finally:
             # Never leave our test Loopback behind on the shared router.
             sent = tester.send(
-                request_yaml(args.router, "netmiko-textfsm", "delete", name)
+                request_yaml(router, "netmiko-textfsm", "delete", name)
             )
             reply, _ = tester.wait_reply(sent, LIMIT_ROUTER)
             print(f"cleanup delete: {json.dumps(reply)}")

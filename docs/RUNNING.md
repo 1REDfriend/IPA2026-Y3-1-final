@@ -29,9 +29,14 @@ to whichever room sent the request.
 python -m pytest -q tests
 docker compose build webhook
 python scripts/check_webhook_image.py
-python scripts/live_test.py                       # Webex validation cases
-python scripts/live_test.py --router 10.0.29.103  # + router sequence
+python scripts/live_test.py           # Webex validation cases
+python scripts/live_test.py --router  # + router sequence on TEST_ROUTER
+python scripts/make_manual_yaml.py    # ready-to-send YAML in manual-yaml/
 ```
+
+The student ID, test router, Loopback IPv4 and test room are read from `.env`
+(`STUDENT_ID`, `TEST_ROUTER`, `TEST_LOOPBACK_IPV4`, `TEST_ROOM`); nothing
+student-specific is hard-coded in the scripts.
 
 `scripts/live_test.py` posts as your own account (`WEBEX_TESTER_TOKEN`) in the
 test room. Router cases only touch `Loopback<student-id>`, refuse

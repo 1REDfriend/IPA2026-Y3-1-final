@@ -3,3 +3,6 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .env
+
+# Filled-in manual Webex YAML (scripts/make_manual_yaml.py)
+manual-yaml/
