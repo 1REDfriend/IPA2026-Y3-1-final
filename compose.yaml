@@ -7,10 +7,14 @@ services:
       WEBEX_BOT_TOKEN: ${WEBEX_BOT_TOKEN:-}
       ROUTER_USER: ${ROUTER_USER:-}
       ROUTER_PASS: ${ROUTER_PASS:-}
+      WEBEX_WEBHOOK_SECRET: ${WEBEX_WEBHOOK_SECRET:-}
+      # Set PUBLIC_URL to use a fixed HTTPS URL instead of the Quick Tunnel.
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      TUNNEL_METRICS_URL: http://tunnel:41983
       WEBHOOK_HOST: 0.0.0.0
       WEBHOOK_PORT: 8000
     ports:
-      - "127.0.0.1:${HOST_PORT:-8000}:8000"
+      - "127.0.0.1:${HOST_PORT:-28475}:8000"
     restart: unless-stopped
     healthcheck:
       test:
@@ -22,3 +26,19 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+  # Cloudflare Quick Tunnel: public HTTPS URL without an account.
+  # The webhook service reads the URL from the metrics port and
+  # re-registers the Webex webhook whenever it changes.
+  tunnel:
+    image: cloudflare/cloudflared:2025.8.1
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --metrics
+      - 0.0.0.0:41983
+      - --url
+      - http://webhook:8000
+    depends_on:
+      - webhook
+    restart: unless-stopped

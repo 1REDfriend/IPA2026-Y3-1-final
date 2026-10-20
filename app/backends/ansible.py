@@ -8,6 +8,7 @@ from app.backends.common import (
     applied,
     error,
     error_from_exception,
+    is_loopback_name,
     router_credentials,
     split_ipv4,
 )
@@ -40,6 +41,14 @@ CONNECTION_MARKERS = (
 
 
 def build_variables(router, desired_interface):
+    # The playbook writes raw IOS lines, so only Loopback<number> is allowed:
+    # a typo must never reconfigure a physical or management interface.
+    if not is_loopback_name(desired_interface["name"]):
+        raise ValueError("Ansible apply is limited to Loopback interfaces")
+    description = desired_interface["description"]
+    if not isinstance(description, str) or not description.isprintable():
+        # A newline here would inject extra IOS configuration lines.
+        raise ValueError("description must be a single printable line")
     address, netmask = split_ipv4(desired_interface["ipv4"])
     return {
         "router": router,

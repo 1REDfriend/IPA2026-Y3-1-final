@@ -4,6 +4,8 @@ from app.backends.common import (
     error,
     error_from_exception,
     found,
+    is_loopback_name,
+    is_safe_interface_name,
     not_found,
     router_credentials,
     to_cidr,
@@ -146,6 +148,11 @@ def get_interface_state(
     """Return normalized interface status using Netmiko + TextFSM."""
     netmiko_get = netmiko_get or _real_netmiko_get
 
+    # The name is placed in a CLI command, so reject anything that could
+    # smuggle extra syntax onto the router.
+    if not is_safe_interface_name(interface_name):
+        return error("backend_failed")
+
     try:
         ip_info, descriptions = netmiko_get(router, interface_name)
     except Exception as exc:
@@ -168,6 +175,10 @@ def delete_interface(
 ):
     """Delete an interface using Netmiko."""
     netmiko_delete = netmiko_delete or _real_netmiko_delete
+
+    # Only Loopback<number> may be removed; never a physical interface.
+    if not is_loopback_name(interface_name):
+        return error("backend_failed")
 
     try:
         result = netmiko_delete(router, interface_name)

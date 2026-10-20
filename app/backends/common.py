@@ -1,6 +1,7 @@
 """Helpers shared by all backend adapters."""
 
 import os
+import re
 from ipaddress import IPv4Interface
 
 
@@ -33,14 +34,29 @@ def router_credentials():
     return os.environ.get("ROUTER_USER", ""), os.environ.get("ROUTER_PASS", "")
 
 
+INTERFACE_NAME_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9/.:-]{0,63}")
+LOOPBACK_NAME_PATTERN = re.compile(r"Loopback[0-9]{1,10}")
+
+
+def is_safe_interface_name(interface_name):
+    """True for a plain IOS interface name with no spaces or CLI syntax."""
+    return isinstance(interface_name, str) and bool(
+        INTERFACE_NAME_PATTERN.fullmatch(interface_name)
+    )
+
+
+def is_loopback_name(interface_name):
+    """True only for Loopback<number>; changes are restricted to these."""
+    return isinstance(interface_name, str) and bool(
+        LOOPBACK_NAME_PATTERN.fullmatch(interface_name)
+    )
+
+
 def loopback_number(interface_name):
     """Return the Cisco native Loopback key, e.g. Loopback123 -> 123."""
-    if not interface_name.startswith(LOOPBACK_PREFIX):
+    if not is_loopback_name(interface_name):
         raise ValueError(f"not a Loopback interface: {interface_name}")
-    number = interface_name[len(LOOPBACK_PREFIX):]
-    if not number.isdigit():
-        raise ValueError(f"invalid Loopback number: {interface_name}")
-    return int(number)
+    return int(interface_name[len(LOOPBACK_PREFIX):])
 
 
 def split_ipv4(cidr):
