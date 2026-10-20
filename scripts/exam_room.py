@@ -161,9 +161,13 @@ def follow(webex, room_id, sent, me_id, student_id, bot_id, reference_id, comman
             author = message["personId"]
             stamp = message["created"][11:19]
 
-            if author == reference_id and bot_id in (message.get("mentionedPeople") or []):
+            if author not in (me_id, bot_id) and bot_id in (
+                message.get("mentionedPeople") or []
+            ):
+                # Live requests come from the instructor's own account,
+                # not from the reference bot.
                 files = " + YAML" if message.get("files") else ""
-                print(f"[{stamp}] grader -> bot{files}")
+                print(f"[{stamp}] {message.get('personEmail')} -> bot{files}")
             elif author == reference_id and (
                 student_id in text
                 or me_id in (message.get("mentionedPeople") or [])
