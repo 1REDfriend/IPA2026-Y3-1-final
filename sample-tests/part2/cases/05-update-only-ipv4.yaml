@@ -1,0 +1,10 @@
+fixture: 05-update-only-ipv4.yaml
+
+expected:
+  status: ok
+  result: planned
+  operation: update
+  changes:
+    ipv4:
+      from: 172.30.175.9/32
+      to: 172.30.175.1/32
