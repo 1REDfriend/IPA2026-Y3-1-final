@@ -1,2 +1,17 @@
 ---
-# TODO: implement the Ansible apply playbook for Part 3.
+# Apply one complete Loopback desired state.
+# Variables come from app/backends/ansible.py:
+#   router, interface_name, description, ipv4_address, netmask, shutdown
+- name: Apply IPA2026 Loopback desired state
+  hosts: routers
+  gather_facts: false
+
+  tasks:
+    - name: Configure interface
+      cisco.ios.ios_config:
+        parents: "interface {{ interface_name }}"
+        lines:
+          - "description {{ description }}"
+          - "ip address {{ ipv4_address }} {{ netmask }}"
+          - "{{ 'shutdown' if shutdown | bool else 'no shutdown' }}"
+        defaults: true
